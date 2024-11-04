@@ -4,9 +4,9 @@ import datetime
 import json
 import pandas as pd
 import time
-import tempfile
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
+import tempfile
 
 # Función principal del ETL adaptada para Streamlit con mensajes temporales de progreso
 def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
@@ -14,8 +14,12 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     fecha_inicio = datetime.datetime(año_consultado, 1, 1)
     fecha_hasta_dt = datetime.datetime(año_consultado, fecha_hasta.month, fecha_hasta.day)
     
-    # Utilizar un directorio temporal para guardar los archivos generados
+    # Directorio donde se guardarán los archivos generados
     DESCARGAS_DIR = tempfile.gettempdir()
+    
+    # Crear la carpeta si no existe
+    if not os.path.exists(DESCARGAS_DIR):
+        os.makedirs(DESCARGAS_DIR)
     
     archivos_mensuales = []
     
@@ -24,7 +28,7 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         # Generar nombre del archivo incluyendo el nombre de la empresa
         nombre_empresa_sanitizado = nombre_empresa.replace(" ", "_")
         NOMBRE_ARCHIVO = f"{nombre_empresa_sanitizado}_{fecha_inicio.strftime('%Y-%m')}.json"
-        RUTA_ARCHIVO = os.path.join(DESCARGAS_DIR, NOMBRE_ARCHIVO)
+        RUTA_ARCHIVO = f"{DESCARGAS_DIR}/{NOMBRE_ARCHIVO}"
         
         # Obtener y guardar los datos mensuales
         libro_mayor = obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa)
@@ -44,11 +48,11 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     # Consolidar archivos mensuales en un archivo JSON anual
     if archivos_mensuales:
         NOMBRE_ARCHIVO_ANUAL = f"{nombre_empresa_sanitizado}_Anual_{año_consultado}.json"
-        RUTA_ARCHIVO_ANUAL = os.path.join(DESCARGAS_DIR, NOMBRE_ARCHIVO_ANUAL)
+        RUTA_ARCHIVO_ANUAL = f"{DESCARGAS_DIR}/{NOMBRE_ARCHIVO_ANUAL}"
         consolidar_archivos_json_como_lista(archivos_mensuales, RUTA_ARCHIVO_ANUAL)
         
         # Crear archivo Excel a partir del JSON consolidado
-        RUTA_EXCEL_ANUAL = os.path.join(DESCARGAS_DIR, f"{nombre_empresa_sanitizado}_Anual_{año_consultado}.xlsx")
+        RUTA_EXCEL_ANUAL = f"{DESCARGAS_DIR}/{nombre_empresa_sanitizado}_Anual_{año_consultado}.xlsx"
         crear_excel_desde_json_en_lotes(RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL)
         
         return RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL
@@ -111,30 +115,37 @@ def consolidar_archivos_json_como_lista(archivos_mensuales, ruta_archivo_anual):
     print(f"Archivo JSON anual consolidado en: {ruta_archivo_anual}")
 
 # Creación de archivo Excel desde JSON consolidado en lotes
-def crear_excel_desde_json_en_lotes(ruta_json, ruta_excel):
+def crear_excel_desde_json_en_lotes(ruta_json, ruta_excel=None):
     # Cargar los datos del archivo JSON
     with open(ruta_json, 'r') as json_file:
         datos = json.load(json_file)
         
-    # Convertir los datos en un DataFrame y exportarlos a Excel
+    # Convertir los datos en un DataFrame
     df = pd.DataFrame(datos)
+
+    # Usar un archivo temporal si no se proporciona ruta_excel
+    if ruta_excel is None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_excel:
+            ruta_excel = temp_excel.name
+    
+    # Exportar el DataFrame a Excel
     df.to_excel(ruta_excel, index=False)
     print(f"Archivo Excel anual creado en: {ruta_excel}")
+    
+    return ruta_excel
 
 
 # Función para guardar en JSON con verificación adicional del directorio
-def guardar_en_json(libro_mayor_datos, ruta_archivo):
-    # Obtener el directorio del archivo
-    directorio = os.path.dirname(ruta_archivo)
-    
-    # Verificar si el directorio existe, si no, crearlo
-    if not os.path.exists(directorio):
-        os.makedirs(directorio, exist_ok=True)
-
-    # Guardar el archivo en JSON
-    with open(ruta_archivo, 'w') as json_file:
-        json.dump(libro_mayor_datos, json_file, indent=4)
-    print(f"Archivo JSON guardado en: {ruta_archivo}")
+def guardar_en_json(libro_mayor_datos, ruta_archivo=None):
+    if ruta_archivo is None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_json:
+            json.dump(libro_mayor_datos, temp_json, indent=4)
+            print(f"Archivo JSON guardado en: {temp_json.name}")
+        return temp_json.name
+    else:
+        with open(ruta_archivo, 'w') as json_file:
+            json.dump(libro_mayor_datos, json_file, indent=4)
+        print(f"Archivo JSON guardado en: {ruta_archivo}")
 
 # Función para obtener el plan de cuentas desde la API
 def obtener_cuentas(session, token, rut_empresa):
