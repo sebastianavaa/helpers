@@ -14,7 +14,7 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     fecha_inicio = datetime.datetime(año_consultado, 1, 1)
     fecha_hasta_dt = datetime.datetime(año_consultado, fecha_hasta.month, fecha_hasta.day)
     
-    # Directorio temporal para almacenar archivos JSON
+    # Directorio temporal para almacenar archivos JSON (en disco, pero solo para uso interno temporal)
     DESCARGAS_DIR = "/tmp/archivos_generados"
     
     # Crear la carpeta si no existe
@@ -45,18 +45,19 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         siguiente_año = fecha_inicio.year + (1 if siguiente_mes == 1 else 0)
         fecha_inicio = datetime.datetime(siguiente_año, siguiente_mes, 1)
     
-    # Consolidar archivos mensuales en un archivo JSON anual
+    # Consolidar archivos mensuales en un archivo JSON anual en memoria
     if archivos_mensuales:
-        NOMBRE_ARCHIVO_ANUAL = f"{nombre_empresa_sanitizado}_Anual_{año_consultado}.json"
-        RUTA_ARCHIVO_ANUAL = f"{DESCARGAS_DIR}/{NOMBRE_ARCHIVO_ANUAL}"
-        consolidar_archivos_json_como_lista(archivos_mensuales, RUTA_ARCHIVO_ANUAL)
+        # Crear el archivo JSON consolidado en memoria
+        json_data = consolidar_archivos_json_como_lista_en_memoria(archivos_mensuales)
         
-        # Crear y retornar el archivo Excel en memoria
-        excel_data = crear_excel_desde_json_en_lotes(RUTA_ARCHIVO_ANUAL)
-        return excel_data
+        # Crear el archivo Excel en memoria
+        excel_data = crear_excel_desde_json_en_lotes(json_data)
+        
+        # Retornar ambos archivos en memoria
+        return json_data, excel_data
     else:
         print("No se generaron datos para consolidar.")
-        return None
+        return None, None
 
 # Función para obtener el libro mayor de un mes específico
 def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa):
@@ -86,8 +87,8 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
             diferencia = asiento['credito'] - asiento['debito']
             tipo = "D" if diferencia < 0 else "C"
             libro_mayor_datos.append({
-                "Código de Cuenta": codigo_cuenta,  # Primeros 10 caracteres
-                "Cuenta": nombre_cuenta,            # El resto del texto
+                "Código de Cuenta": codigo_cuenta,
+                "Cuenta": nombre_cuenta,
                 "Crédito - Débito": diferencia,
                 "Tipo": tipo,
                 "Detalles": asiento.get('detalles', ''),
@@ -100,17 +101,19 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
     
     return libro_mayor_datos
 
-# Consolidación de archivos JSON en una lista única
-def consolidar_archivos_json_como_lista(archivos_mensuales, ruta_archivo_anual):
+# Consolidación de archivos JSON en un solo archivo JSON en memoria
+def consolidar_archivos_json_como_lista_en_memoria(archivos_mensuales):
     datos_consolidados = []
     for archivo in archivos_mensuales:
         with open(archivo, 'r') as json_file:
             datos = json.load(json_file)
             datos_consolidados.extend(datos)
     
-    with open(ruta_archivo_anual, 'w') as archivo_anual:
-        json.dump(datos_consolidados, archivo_anual, indent=4)
-    print(f"Archivo JSON anual consolidado en: {ruta_archivo_anual}")
+    # Crear un archivo JSON en memoria
+    output = BytesIO()
+    output.write(json.dumps(datos_consolidados, indent=4).encode('utf-8'))
+    output.seek(0)  # Volver al inicio del archivo en memoria
+    return output
 
 # Creación de archivo Excel desde JSON consolidado en memoria
 def crear_excel_en_memoria(data):
@@ -120,24 +123,18 @@ def crear_excel_en_memoria(data):
     output.seek(0)  # Volver al inicio del archivo en memoria
     return output
 
-def crear_excel_desde_json_en_lotes(ruta_json):
-    # Cargar los datos del archivo JSON
-    with open(ruta_json, 'r') as json_file:
-        datos = json.load(json_file)
-        
+def crear_excel_desde_json_en_lotes(json_data):
+    # Cargar los datos del archivo JSON en memoria
+    datos = json.load(json_data)
+    
     # Generar el archivo Excel en memoria
     return crear_excel_en_memoria(datos)
 
 # Función para guardar en JSON con verificación adicional del directorio
 def guardar_en_json(libro_mayor_datos, ruta_archivo):
-    # Obtener el directorio del archivo
     directorio = os.path.dirname(ruta_archivo)
-    
-    # Verificar si el directorio existe, si no, crearlo
     if not os.path.exists(directorio):
         os.makedirs(directorio)
-
-    # Guardar el archivo en JSON
     with open(ruta_archivo, 'w') as json_file:
         json.dump(libro_mayor_datos, json_file, indent=4)
     print(f"Archivo JSON guardado en: {ruta_archivo}")
