@@ -1,5 +1,5 @@
 import streamlit as st
-from etl_script import ejecutar_etl, crear_excel_en_memoria
+from etl_script import ejecutar_etl
 from google_sheet_helper import obtener_rut_por_empresa, obtener_lista_empresas
 from datetime import date, datetime
 import calendar
@@ -40,21 +40,20 @@ if st.button("🚀 Ejecutar ETL"):
             # Spinner de carga mientras se ejecuta el ETL
             with st.spinner("⏳ Procesando datos, por favor espera..."):
                 # Ejecutar el proceso ETL usando el RUT obtenido y el nombre de la empresa
-                libro_mayor_datos = ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st)
+                ruta_json, ruta_excel = ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st)
 
-            if libro_mayor_datos:
-                # Generar archivo Excel en memoria
-                archivo_excel = crear_excel_en_memoria(libro_mayor_datos)
-
-                # Descargar Excel desde la memoria
+            if ruta_json and ruta_excel:
+                # Nombres personalizados para los archivos de descarga
+                json_filename = f"{nombre_empresa.replace(' ', '_')}_{anio}-{mes_numero:02d}.json"
                 excel_filename = f"{nombre_empresa.replace(' ', '_')}_{anio}-{mes_numero:02d}.xlsx"
-                st.download_button(
-                    "📊 Descargar Excel",
-                    data=archivo_excel,
-                    file_name=excel_filename,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
 
+                st.write("📂 **Descarga tus archivos aquí:**")
+                with open(ruta_json, "rb") as f_json:
+                    st.download_button("📥 Descargar JSON", data=f_json, file_name=json_filename, mime="application/json")
+                
+                with open(ruta_excel, "rb") as f_excel:
+                    st.download_button("📊 Descargar Excel", data=f_excel, file_name=excel_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                
                 # Efecto visual de finalización
                 st.success("¡Proceso completado con éxito! 🎉")
                 st.balloons()
