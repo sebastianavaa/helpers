@@ -116,15 +116,15 @@ def consolidar_archivos_json_como_lista(archivos_mensuales, ruta_archivo_anual):
 
 # Creación de archivo Excel desde JSON consolidado en lotes
 def crear_excel_desde_json_en_lotes(ruta_json, ruta_excel):
-    # Verificar si el archivo ya existe y eliminarlo
-    if os.path.exists(ruta_excel):
-        os.remove(ruta_excel)  # Eliminar el archivo anterior para evitar el estado de solo lectura
-
-    # Leer los datos JSON y guardar en Excel
+    # Cargar los datos del archivo JSON
     with open(ruta_json, 'r') as json_file:
         datos = json.load(json_file)
-    pd.DataFrame(datos).to_excel(ruta_excel, index=False)
+        
+    # Convertir los datos en un DataFrame y exportarlos a Excel
+    df = pd.DataFrame(datos)
+    df.to_excel(ruta_excel, index=False)
     print(f"Archivo Excel anual creado en: {ruta_excel}")
+
 
 # Función para guardar en JSON con verificación adicional del directorio
 def guardar_en_json(libro_mayor_datos, ruta_archivo):
