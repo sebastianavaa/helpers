@@ -38,7 +38,7 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
             
             # Actualizar con mensaje temporal
             st.info(f"📄 Archivo {NOMBRE_ARCHIVO} generado.")
-            time.sleep(1)  # Pausa para que el mensaje sea visible
+            time.sleep(1)  # Pequeña pausa para que el mensaje sea visible
         
         # Avanzar al próximo mes
         siguiente_mes = fecha_inicio.month % 12 + 1
@@ -77,9 +77,10 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
     
     libro_mayor_datos = []
     for asiento in datos_cuenta:
-        cuenta_codigo_completo = asiento.get('cuenta', '')
-        codigo_cuenta = cuenta_codigo_completo[:10]
-        nombre_cuenta = cuenta_codigo_completo[10:].strip()
+        cuenta_codigo_completo = asiento.get('cuenta', '')  # Obtener el texto completo de la cuenta
+        # Dividir en "Código de Cuenta" y "Cuenta"
+        codigo_cuenta = cuenta_codigo_completo[:10]  # Extraer los primeros 10 caracteres
+        nombre_cuenta = cuenta_codigo_completo[10:].strip()  # El resto del texto, quitando espacios
 
         detalles = asiento.get('detalles', '').lower()
         
@@ -87,8 +88,8 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
             diferencia = asiento['credito'] - asiento['debito']
             tipo = "D" if diferencia < 0 else "C"
             libro_mayor_datos.append({
-                "Código de Cuenta": codigo_cuenta,
-                "Cuenta": nombre_cuenta,
+                "Código de Cuenta": codigo_cuenta,  # Primeros 10 caracteres
+                "Cuenta": nombre_cuenta,            # El resto del texto
                 "Crédito - Débito": diferencia,
                 "Tipo": tipo,
                 "Detalles": asiento.get('detalles', ''),
@@ -119,23 +120,22 @@ def crear_excel_desde_json_en_lotes(ruta_json, ruta_excel):
     with open(ruta_json, 'r') as json_file:
         datos = json.load(json_file)
         
-    # Verificar que los datos están en el formato correcto
-    if not isinstance(datos, list) or len(datos) == 0 or not isinstance(datos[0], dict):
-        print("Datos JSON no válidos o vacíos.")
-        return
-
     # Convertir los datos en un DataFrame y exportarlos a Excel
     df = pd.DataFrame(datos)
     df.to_excel(ruta_excel, index=False)
     print(f"Archivo Excel anual creado en: {ruta_excel}")
 
+
 # Función para guardar en JSON con verificación adicional del directorio
 def guardar_en_json(libro_mayor_datos, ruta_archivo):
+    # Obtener el directorio del archivo
     directorio = os.path.dirname(ruta_archivo)
     
+    # Verificar si el directorio existe, si no, crearlo
     if not os.path.exists(directorio):
         os.makedirs(directorio)
 
+    # Guardar el archivo en JSON
     with open(ruta_archivo, 'w') as json_file:
         json.dump(libro_mayor_datos, json_file, indent=4)
     print(f"Archivo JSON guardado en: {ruta_archivo}")
@@ -175,3 +175,13 @@ def llamar_api_libro_mayor(session, token, rut_empresa, cuentas, fecha_desde, fe
                 has_more_data = False
         else:
             print(f"Error al obtener el libro mayor: {response.status_code}")
+            has_more_data = False
+    return datos_cuenta
+
+# En etl_script.py
+def crear_excel_en_memoria(data):
+    """Genera un archivo Excel en memoria."""
+    output = BytesIO()
+    pd.DataFrame(data).to_excel(output, index=False)
+    output.seek(0)  # Volver al inicio del archivo en memoria
+    return output
