@@ -6,6 +6,7 @@ import pandas as pd
 import time
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
+from io import BytesIO
 
 # Función principal del ETL adaptada para Streamlit con mensajes temporales de progreso
 def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
@@ -14,7 +15,7 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     fecha_hasta_dt = datetime.datetime(año_consultado, fecha_hasta.month, fecha_hasta.day)
     
     # Directorio donde se guardarán los archivos generados
-    DESCARGAS_DIR = "/Users/sebastiannava/Desktop/ProyectosGithub/helpers/archivos_generados"
+    DESCARGAS_DIR = "/tmp/archivos_generados"
     
     # Crear la carpeta si no existe
     if not os.path.exists(DESCARGAS_DIR):
@@ -176,3 +177,11 @@ def llamar_api_libro_mayor(session, token, rut_empresa, cuentas, fecha_desde, fe
             print(f"Error al obtener el libro mayor: {response.status_code}")
             has_more_data = False
     return datos_cuenta
+
+# En etl_script.py
+def crear_excel_en_memoria(data):
+    """Genera un archivo Excel en memoria."""
+    output = BytesIO()
+    pd.DataFrame(data).to_excel(output, index=False)
+    output.seek(0)  # Volver al inicio del archivo en memoria
+    return output
