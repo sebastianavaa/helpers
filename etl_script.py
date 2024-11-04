@@ -97,7 +97,8 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
         codigo_cuenta = cuenta_codigo_completo[:10]  # Extraer los primeros 10 caracteres
         nombre_cuenta = cuenta_codigo_completo[10:].strip()  # El resto del texto, quitando espacios
 
-        detalles = asiento.get('detalles', '').lower()
+        # Limitar los detalles a 120 caracteres
+        detalles = asiento.get('detalles', '')[:120].lower()
         
         if "apertura" not in detalles:
             diferencia = asiento['credito'] - asiento['debito']
@@ -107,15 +108,16 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
                 "Cuenta": nombre_cuenta,
                 "Crédito - Débito": diferencia,
                 "Tipo": tipo,
-                "Detalles": asiento.get('detalles', ''),
+                "Detalles": detalles,  # Detalles truncados a 120 caracteres
                 "Fecha de Contabilización": asiento.get('fecha_contabilizacion_humana', ''),
-                "Centro de Costo": "N/A",
+                "Centro de Costo": "",  # Campo vacío en lugar de "N/A"
                 "Empresa": nombre_empresa,
                 "Información Adicional": f"Asiento {asiento.get('numero_asiento', '')}",
                 "Contraparte": asiento.get('contraparte', '')
             })
     
     return libro_mayor_datos
+
 # Consolidación de archivos JSON en una lista única
 def consolidar_archivos_json_como_lista(archivos_mensuales, ruta_archivo_anual):
     datos_consolidados = []
