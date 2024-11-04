@@ -176,7 +176,6 @@ def llamar_api_libro_mayor(session, token, rut_empresa, cuentas, fecha_desde, fe
             print(f"Error al obtener el libro mayor: {response.status_code}")
             has_more_data = False
     return datos_cuenta
-<<<<<<< HEAD
 
 # En etl_script.py
 def crear_excel_en_memoria(data):
@@ -185,5 +184,3 @@ def crear_excel_en_memoria(data):
     pd.DataFrame(data).to_excel(output, index=False)
     output.seek(0)  # Volver al inicio del archivo en memoria
     return output
-=======
->>>>>>> parent of 5e11acc (creacion de memoria online de streamlit)
