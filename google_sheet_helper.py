@@ -1,9 +1,8 @@
-import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 
 # Configuración de autenticación
-ruta_credenciales = st.secrets["client_email"]  # Cambia esto por la ruta a tu archivo de credenciales
+ruta_credenciales = "/Users/sebastiannava/Desktop/ProyectosGithub/helpers/our-metric-440014-f5-3e6296bfc0aa.json"  # Cambia esto por la ruta a tu archivo de credenciales
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 creds = Credentials.from_service_account_file(ruta_credenciales, scopes=scope)
 client = gspread.authorize(creds)
