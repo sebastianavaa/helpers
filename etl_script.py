@@ -54,40 +54,6 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         return None
  
 # Función para obtener el libro mayor de un mes específico
-<<<<<<< HEAD
-def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
-    año_consultado = fecha_hasta.year
-    fecha_inicio = datetime.datetime(año_consultado, 1, 1)
-    fecha_hasta_dt = datetime.datetime(año_consultado, fecha_hasta.month, fecha_hasta.day)
-    
-    DESCARGAS_DIR = tempfile.gettempdir()
-    datos_consolidados = []
-
-    # Procesar cada mes desde enero hasta la fecha indicada en fecha_hasta
-    while fecha_inicio <= fecha_hasta_dt:
-        # Generar nombre del archivo incluyendo el nombre de la empresa
-        libro_mayor = obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa, st)  # Incluye `st`
-        if libro_mayor:
-            df_mensual = pd.DataFrame(libro_mayor)
-            datos_consolidados.append(df_mensual)
-            st.info(f"📄 Datos del mes {fecha_inicio.strftime('%Y-%m')} cargados.")
-            time.sleep(1)  # Pequeña pausa para que el mensaje sea visible
-        
-        # Avanzar al próximo mes
-        siguiente_mes = fecha_inicio.month % 12 + 1
-        siguiente_año = fecha_inicio.year + (1 if siguiente_mes == 1 else 0)
-        fecha_inicio = datetime.datetime(siguiente_año, siguiente_mes, 1)
-    
-    # Consolidar datos mensuales en un DataFrame y exportar a Excel
-    if datos_consolidados:
-        df_final = pd.concat(datos_consolidados, ignore_index=True)
-        RUTA_EXCEL_ANUAL = f"{DESCARGAS_DIR}/{nombre_empresa.replace(' ', '_')}_Anual_{año_consultado}.xlsx"
-        df_final.to_excel(RUTA_EXCEL_ANUAL, index=False)
-        return RUTA_EXCEL_ANUAL
-    else:
-        st.error("No se generaron datos para consolidar.")
-        return None
-=======
 def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa):
     fecha_fin_mes = (fecha_inicio + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
     session = requests.Session()
@@ -128,7 +94,6 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
             })
     
     return libro_mayor_datos
->>>>>>> parent of 9102485 (cambio en los tiempos de ejecucion)
 
 # Consolidación de archivos JSON en una lista única
 def consolidar_archivos_json_como_lista(archivos_mensuales, ruta_archivo_anual):
