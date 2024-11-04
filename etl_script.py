@@ -14,13 +14,6 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     fecha_inicio = datetime.datetime(año_consultado, 1, 1)
     fecha_hasta_dt = datetime.datetime(año_consultado, fecha_hasta.month, fecha_hasta.day)
     
-<<<<<<< HEAD
-    DESCARGAS_DIR = tempfile.gettempdir()
-    datos_consolidados = []
-
-    while fecha_inicio <= fecha_hasta_dt:
-        libro_mayor = obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa, st)
-=======
     # Utilizar un directorio temporal para guardar los archivos generados
     DESCARGAS_DIR = tempfile.gettempdir()
     
@@ -35,7 +28,6 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         
         # Obtener y guardar los datos mensuales
         libro_mayor = obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa)
->>>>>>> parent of 7b17508 (cambio en etl tempfile)
         if libro_mayor:
             df_mensual = pd.DataFrame(libro_mayor)
             datos_consolidados.append(df_mensual)
@@ -46,13 +38,6 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         siguiente_año = fecha_inicio.year + (1 if siguiente_mes == 1 else 0)
         fecha_inicio = datetime.datetime(siguiente_año, siguiente_mes, 1)
     
-<<<<<<< HEAD
-    if datos_consolidados:
-        df_final = pd.concat(datos_consolidados, ignore_index=True)
-        RUTA_EXCEL_ANUAL = f"{DESCARGAS_DIR}/{nombre_empresa.replace(' ', '_')}_Anual_{año_consultado}.xlsx"
-        df_final.to_excel(RUTA_EXCEL_ANUAL, index=False)
-        return RUTA_EXCEL_ANUAL
-=======
     # Consolidar archivos mensuales en un archivo JSON anual
     if archivos_mensuales:
         NOMBRE_ARCHIVO_ANUAL = f"{nombre_empresa_sanitizado}_Anual_{año_consultado}.json"
@@ -64,7 +49,6 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         crear_excel_desde_json_en_lotes(RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL)
         
         return RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL
->>>>>>> parent of 7b17508 (cambio en etl tempfile)
     else:
         st.error("No se generaron datos para consolidar.")
         return None
