@@ -4,6 +4,7 @@ import datetime
 import json
 import pandas as pd
 import time
+import tempfile
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
@@ -13,12 +14,8 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     fecha_inicio = datetime.datetime(año_consultado, 1, 1)
     fecha_hasta_dt = datetime.datetime(año_consultado, fecha_hasta.month, fecha_hasta.day)
     
-    # Directorio donde se guardarán los archivos generados
-    DESCARGAS_DIR = "/Users/sebastiannava/Desktop/ProyectosGithub/helpers/archivos_generados"
-    
-    # Crear la carpeta si no existe
-    if not os.path.exists(DESCARGAS_DIR):
-        os.makedirs(DESCARGAS_DIR)
+    # Utilizar un directorio temporal para guardar los archivos generados
+    DESCARGAS_DIR = tempfile.gettempdir()
     
     archivos_mensuales = []
     
@@ -27,7 +24,7 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         # Generar nombre del archivo incluyendo el nombre de la empresa
         nombre_empresa_sanitizado = nombre_empresa.replace(" ", "_")
         NOMBRE_ARCHIVO = f"{nombre_empresa_sanitizado}_{fecha_inicio.strftime('%Y-%m')}.json"
-        RUTA_ARCHIVO = f"{DESCARGAS_DIR}/{NOMBRE_ARCHIVO}"
+        RUTA_ARCHIVO = os.path.join(DESCARGAS_DIR, NOMBRE_ARCHIVO)
         
         # Obtener y guardar los datos mensuales
         libro_mayor = obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa)
@@ -47,11 +44,11 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     # Consolidar archivos mensuales en un archivo JSON anual
     if archivos_mensuales:
         NOMBRE_ARCHIVO_ANUAL = f"{nombre_empresa_sanitizado}_Anual_{año_consultado}.json"
-        RUTA_ARCHIVO_ANUAL = f"{DESCARGAS_DIR}/{NOMBRE_ARCHIVO_ANUAL}"
+        RUTA_ARCHIVO_ANUAL = os.path.join(DESCARGAS_DIR, NOMBRE_ARCHIVO_ANUAL)
         consolidar_archivos_json_como_lista(archivos_mensuales, RUTA_ARCHIVO_ANUAL)
         
         # Crear archivo Excel a partir del JSON consolidado
-        RUTA_EXCEL_ANUAL = f"{DESCARGAS_DIR}/{nombre_empresa_sanitizado}_Anual_{año_consultado}.xlsx"
+        RUTA_EXCEL_ANUAL = os.path.join(DESCARGAS_DIR, f"{nombre_empresa_sanitizado}_Anual_{año_consultado}.xlsx")
         crear_excel_desde_json_en_lotes(RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL)
         
         return RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL
@@ -132,7 +129,7 @@ def guardar_en_json(libro_mayor_datos, ruta_archivo):
     
     # Verificar si el directorio existe, si no, crearlo
     if not os.path.exists(directorio):
-        os.makedirs(directorio)
+        os.makedirs(directorio, exist_ok=True)
 
     # Guardar el archivo en JSON
     with open(ruta_archivo, 'w') as json_file:
