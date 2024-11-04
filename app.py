@@ -39,32 +39,29 @@ if mes and anio:
 # Botón para ejecutar el ETL
 if st.button("🚀 Ejecutar ETL"):
     if nombre_empresa:
-        # Obtener el RUT de la empresa seleccionada usando la función cacheada
         rut_empresa = obtener_rut_por_empresa_cached(nombre_empresa)
         
         if rut_empresa:
-            # Mensaje de bienvenida personalizado
             st.write(f"✅ RUT encontrado para '**{nombre_empresa}**': `{rut_empresa}`")
             st.write(f"📅 Generando reporte hasta el **{fecha_hasta}**.")
 
-            # Spinner de carga mientras se ejecuta el ETL
             with st.spinner("⏳ Procesando datos, por favor espera..."):
-                # Ejecutar el proceso ETL usando el RUT obtenido y el nombre de la empresa
-                ruta_excel = ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st)
+                # Ejecutar el ETL y recibir el archivo Excel en memoria
+                excel_data = ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st)
 
-            if ruta_excel:
-                # Nombre personalizado para el archivo de descarga
+            if excel_data:
                 excel_filename = f"{nombre_empresa.replace(' ', '_')}_{anio}-{mes_numero:02d}.xlsx"
-
-                st.write("📂 **Descarga tu archivo aquí:**")
-                with open(ruta_excel, "rb") as f_excel:
-                    st.download_button("📊 Descargar Excel", data=f_excel, file_name=excel_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 
-                # Efecto visual de finalización
+                st.write("📂 **Descarga tu archivo aquí:**")
+                st.download_button(
+                    "📊 Descargar Excel",
+                    data=excel_data,
+                    file_name=excel_filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                
                 st.success("¡Proceso completado con éxito! 🎉")
                 st.balloons()
-                
-                # Frase de despedida divertida
                 st.write("🤖 **¡Reporte listo para que brilles en tus análisis contables!**")
             else:
                 st.error("No se generaron datos para consolidar. 🤔 Intenta con otro período.")
