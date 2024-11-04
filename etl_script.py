@@ -176,11 +176,3 @@ def llamar_api_libro_mayor(session, token, rut_empresa, cuentas, fecha_desde, fe
             print(f"Error al obtener el libro mayor: {response.status_code}")
             has_more_data = False
     return datos_cuenta
-
-# En etl_script.py
-def crear_excel_en_memoria(data):
-    """Genera un archivo Excel en memoria."""
-    output = BytesIO()
-    pd.DataFrame(data).to_excel(output, index=False)
-    output.seek(0)  # Volver al inicio del archivo en memoria
-    return output
