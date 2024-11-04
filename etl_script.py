@@ -29,11 +29,14 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         # Obtener y guardar los datos mensuales
         libro_mayor = obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa)
         if libro_mayor:
-            df_mensual = pd.DataFrame(libro_mayor)
-            datos_consolidados.append(df_mensual)
-            st.info(f"📄 Datos del mes {fecha_inicio.strftime('%Y-%m')} cargados.")
-            time.sleep(1)
+            guardar_en_json(libro_mayor, RUTA_ARCHIVO)
+            archivos_mensuales.append(RUTA_ARCHIVO)
+            
+            # Actualizar con mensaje temporal
+            st.info(f"📄 Archivo {NOMBRE_ARCHIVO} generado.")
+            time.sleep(1)  # Pequeña pausa para que el mensaje sea visible
         
+        # Avanzar al próximo mes
         siguiente_mes = fecha_inicio.month % 12 + 1
         siguiente_año = fecha_inicio.year + (1 if siguiente_mes == 1 else 0)
         fecha_inicio = datetime.datetime(siguiente_año, siguiente_mes, 1)
@@ -50,9 +53,9 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         
         return RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL
     else:
-        st.error("No se generaron datos para consolidar.")
-        return None
- 
+        print("No se generaron datos para consolidar.")
+        return None, None
+
 # Función para obtener el libro mayor de un mes específico
 def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa):
     fecha_fin_mes = (fecha_inicio + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
