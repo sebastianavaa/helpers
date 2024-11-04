@@ -11,8 +11,17 @@ token = st.secrets["TOKEN"]
 st.title("📊 Genera tu Libro Mayor Accountfy")
 st.write("🔍 **Selecciona el nombre de la empresa y el período para generar el reporte contable completo!**")
 
-# Obtener la lista de empresas del Google Sheet
-lista_empresas = obtener_lista_empresas()
+# Caching para reducir llamadas a Google Sheets
+@st.cache_data
+def obtener_lista_empresas_cached():
+    return obtener_lista_empresas()
+
+@st.cache_data
+def obtener_rut_por_empresa_cached(nombre_empresa):
+    return obtener_rut_por_empresa(nombre_empresa)
+
+# Obtener la lista de empresas del Google Sheet usando caché
+lista_empresas = obtener_lista_empresas_cached()
 
 # Mostrar el menú desplegable con los nombres de las empresas
 nombre_empresa = st.selectbox("🏢 Selecciona la Empresa:", lista_empresas)
@@ -30,7 +39,8 @@ if mes and anio:
 # Botón para ejecutar el ETL
 if st.button("🚀 Ejecutar ETL"):
     if nombre_empresa:
-        rut_empresa = obtener_rut_por_empresa(nombre_empresa)
+        # Obtener el RUT de la empresa seleccionada usando la función cacheada
+        rut_empresa = obtener_rut_por_empresa_cached(nombre_empresa)
         
         if rut_empresa:
             # Mensaje de bienvenida personalizado
@@ -40,17 +50,13 @@ if st.button("🚀 Ejecutar ETL"):
             # Spinner de carga mientras se ejecuta el ETL
             with st.spinner("⏳ Procesando datos, por favor espera..."):
                 # Ejecutar el proceso ETL usando el RUT obtenido y el nombre de la empresa
-                ruta_json, ruta_excel = ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st)
+                ruta_excel = ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st)
 
-            if ruta_json and ruta_excel:
-                # Nombres personalizados para los archivos de descarga
-                json_filename = f"{nombre_empresa.replace(' ', '_')}_{anio}-{mes_numero:02d}.json"
+            if ruta_excel:
+                # Nombre personalizado para el archivo de descarga
                 excel_filename = f"{nombre_empresa.replace(' ', '_')}_{anio}-{mes_numero:02d}.xlsx"
 
-                st.write("📂 **Descarga tus archivos aquí:**")
-                with open(ruta_json, "rb") as f_json:
-                    st.download_button("📥 Descargar JSON", data=f_json, file_name=json_filename, mime="application/json")
-                
+                st.write("📂 **Descarga tu archivo aquí:**")
                 with open(ruta_excel, "rb") as f_excel:
                     st.download_button("📊 Descargar Excel", data=f_excel, file_name=excel_filename, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 

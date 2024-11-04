@@ -14,90 +14,62 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     fecha_inicio = datetime.datetime(año_consultado, 1, 1)
     fecha_hasta_dt = datetime.datetime(año_consultado, fecha_hasta.month, fecha_hasta.day)
     
-    # Directorio donde se guardarán los archivos generados
     DESCARGAS_DIR = tempfile.gettempdir()
-    
-    # Crear la carpeta si no existe
-    if not os.path.exists(DESCARGAS_DIR):
-        os.makedirs(DESCARGAS_DIR)
-    
-    archivos_mensuales = []
-    
-    # Procesar cada mes desde enero hasta la fecha indicada en fecha_hasta
+    datos_consolidados = []
+
     while fecha_inicio <= fecha_hasta_dt:
-        # Generar nombre del archivo incluyendo el nombre de la empresa
-        nombre_empresa_sanitizado = nombre_empresa.replace(" ", "_")
-        NOMBRE_ARCHIVO = f"{nombre_empresa_sanitizado}_{fecha_inicio.strftime('%Y-%m')}.json"
-        RUTA_ARCHIVO = f"{DESCARGAS_DIR}/{NOMBRE_ARCHIVO}"
-        
-        # Obtener y guardar los datos mensuales
-        libro_mayor = obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa)
+        libro_mayor = obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa, st)
         if libro_mayor:
-            guardar_en_json(libro_mayor, RUTA_ARCHIVO)
-            archivos_mensuales.append(RUTA_ARCHIVO)
-            
-            # Actualizar con mensaje temporal
-            st.info(f"📄 Archivo {NOMBRE_ARCHIVO} generado.")
-            time.sleep(1)  # Pequeña pausa para que el mensaje sea visible
+            df_mensual = pd.DataFrame(libro_mayor)
+            datos_consolidados.append(df_mensual)
+            st.info(f"📄 Datos del mes {fecha_inicio.strftime('%Y-%m')} cargados.")
+            time.sleep(1)
         
-        # Avanzar al próximo mes
         siguiente_mes = fecha_inicio.month % 12 + 1
         siguiente_año = fecha_inicio.year + (1 if siguiente_mes == 1 else 0)
         fecha_inicio = datetime.datetime(siguiente_año, siguiente_mes, 1)
     
-    # Consolidar archivos mensuales en un archivo JSON anual
-    if archivos_mensuales:
-        NOMBRE_ARCHIVO_ANUAL = f"{nombre_empresa_sanitizado}_Anual_{año_consultado}.json"
-        RUTA_ARCHIVO_ANUAL = f"{DESCARGAS_DIR}/{NOMBRE_ARCHIVO_ANUAL}"
-        consolidar_archivos_json_como_lista(archivos_mensuales, RUTA_ARCHIVO_ANUAL)
-        
-        # Crear archivo Excel a partir del JSON consolidado
-        RUTA_EXCEL_ANUAL = f"{DESCARGAS_DIR}/{nombre_empresa_sanitizado}_Anual_{año_consultado}.xlsx"
-        crear_excel_desde_json_en_lotes(RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL)
-        
-        return RUTA_ARCHIVO_ANUAL, RUTA_EXCEL_ANUAL
+    if datos_consolidados:
+        df_final = pd.concat(datos_consolidados, ignore_index=True)
+        RUTA_EXCEL_ANUAL = f"{DESCARGAS_DIR}/{nombre_empresa.replace(' ', '_')}_Anual_{año_consultado}.xlsx"
+        df_final.to_excel(RUTA_EXCEL_ANUAL, index=False)
+        return RUTA_EXCEL_ANUAL
     else:
-        print("No se generaron datos para consolidar.")
-        return None, None
-
+        st.error("No se generaron datos para consolidar.")
+        return None
+ 
 # Función para obtener el libro mayor de un mes específico
-def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa):
+def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa, st):
     fecha_fin_mes = (fecha_inicio + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
     session = requests.Session()
     
-    # Configuración de reintentos con mayor número de intentos y tiempo de espera entre reintentos
+    # Configuración de reintentos
     retries = Retry(
-        total=20,               # Número total de reintentos
-        backoff_factor=10,       # Incremento del tiempo de espera entre reintentos
-        status_forcelist=[429, 500, 502, 503, 504]  # Errores para los cuales se debe reintentar
+        total=5,               # Menor número de reintentos
+        backoff_factor=3,      # Tiempo de espera creciente entre reintentos
+        status_forcelist=[429, 500, 502, 503, 504]
     )
     session.mount("https://", HTTPAdapter(max_retries=retries))
     
-    # Obtener cuentas separadas por comas y diccionario de nombres de cuentas
     cuentas_coma_separadas, cuenta_nombre_dict = obtener_cuentas(session, token, rut_empresa)
     if not cuentas_coma_separadas:
-        print("No se encontraron cuentas de nivel 4 en el plan de cuentas.")
+        st.error("No se encontraron cuentas de nivel 4 en el plan de cuentas.")
         return []
 
     try:
-        # Llamar a la API para obtener el libro mayor con un timeout extendido
         datos_cuenta = llamar_api_libro_mayor(
             session, token, rut_empresa, cuentas_coma_separadas, 
             fecha_inicio.strftime('%Y-%m-%d'), fecha_fin_mes.strftime('%Y-%m-%d')
         )
     except requests.exceptions.RequestException as e:
-        # Mostrar mensaje de error en Streamlit si falla la solicitud
-        st.error(f"Error al obtener datos de la API para {nombre_empresa}: {str(e)}. Intenta nuevamente.")
+        st.error(f"Error al obtener datos de la API para {nombre_empresa}: {str(e)}.")
         return []
 
-    # Procesar datos obtenidos del libro mayor
     libro_mayor_datos = []
     for asiento in datos_cuenta:
-        cuenta_codigo_completo = asiento.get('cuenta', '')  # Obtener el texto completo de la cuenta
-        codigo_cuenta = cuenta_codigo_completo[:10]  # Extraer los primeros 10 caracteres
-        nombre_cuenta = cuenta_codigo_completo[10:].strip()  # El resto del texto, quitando espacios
-
-        # Limitar los detalles a 120 caracteres
+        cuenta_codigo_completo = asiento.get('cuenta', '')
+        codigo_cuenta = cuenta_codigo_completo[:10]
+        nombre_cuenta = cuenta_codigo_completo[10:].strip()
         detalles = asiento.get('detalles', '')[:120].lower()
         
         if "apertura" not in detalles:
@@ -108,9 +80,9 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
                 "Cuenta": nombre_cuenta,
                 "Crédito - Débito": diferencia,
                 "Tipo": tipo,
-                "Detalles": detalles,  # Detalles truncados a 120 caracteres
+                "Detalles": detalles,
                 "Fecha de Contabilización": asiento.get('fecha_contabilizacion_humana', ''),
-                "Centro de Costo": "",  # Campo vacío en lugar de "N/A"
+                "Centro de Costo": "",
                 "Empresa": nombre_empresa,
                 "Información Adicional": f"Asiento {asiento.get('numero_asiento', '')}",
                 "Contraparte": asiento.get('contraparte', '')
