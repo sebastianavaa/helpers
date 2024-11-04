@@ -8,7 +8,7 @@ import calendar
 token = st.secrets["TOKEN"]
 
 # Título y descripción de la aplicación con emojis para un toque visual
-st.title("📊 Generador de Reporte Contable en Accountfy")
+st.title("📊 Genera tu Libro Mayor Accountfy")
 st.write("🔍 **Selecciona el nombre de la empresa y el período para generar el reporte contable completo!**")
 
 # Obtener la lista de empresas del Google Sheet
