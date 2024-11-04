@@ -1,10 +1,26 @@
 import gspread
 from google.oauth2.service_account import Credentials
+import streamlit as st
 
-# Configuración de autenticación
-ruta_credenciales = "/Users/sebastiannava/Desktop/ProyectosGithub/helpers/our-metric-440014-f5-3e6296bfc0aa.json"  # Cambia esto por la ruta a tu archivo de credenciales
+# Configuración de autenticación con credenciales desde secrets.toml
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_file(ruta_credenciales, scopes=scope)
+
+# Cargar las credenciales desde `st.secrets`
+credentials_info = {
+    "type": st.secrets["google_service_account"]["type"],
+    "project_id": st.secrets["google_service_account"]["project_id"],
+    "private_key_id": st.secrets["google_service_account"]["private_key_id"],
+    "private_key": st.secrets["google_service_account"]["private_key"],
+    "client_email": st.secrets["google_service_account"]["client_email"],
+    "client_id": st.secrets["google_service_account"]["client_id"],
+    "auth_uri": st.secrets["google_service_account"]["auth_uri"],
+    "token_uri": st.secrets["google_service_account"]["token_uri"],
+    "auth_provider_x509_cert_url": st.secrets["google_service_account"]["auth_provider_x509_cert_url"],
+    "client_x509_cert_url": st.secrets["google_service_account"]["client_x509_cert_url"]
+}
+
+# Crear credenciales a partir del diccionario
+creds = Credentials.from_service_account_info(credentials_info, scopes=scope)
 client = gspread.authorize(creds)
 
 # URL del Google Sheet (cambia esto por el URL de tu documento)
@@ -16,6 +32,9 @@ def obtener_hoja(hoja_nombre="Accountfy Nombres"):
     sheet = client.open_by_url(spreadsheet_url)
     worksheet = sheet.worksheet(hoja_nombre)
     return worksheet
+
+# Funciones adicionales para manejar los datos como en tu código original...
+# (Aquí irían las demás funciones como obtener_rut_por_empresa, obtener_datos_empresa, etc.)
 
 # Función para obtener el RUT a partir del nombre de la empresa
 def obtener_rut_por_empresa(nombre_empresa, hoja_nombre="Accountfy Nombres"):
