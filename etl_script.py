@@ -54,6 +54,7 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
         return None
  
 # Función para obtener el libro mayor de un mes específico
+<<<<<<< HEAD
 def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     año_consultado = fecha_hasta.year
     fecha_inicio = datetime.datetime(año_consultado, 1, 1)
@@ -86,6 +87,48 @@ def ejecutar_etl(token, rut_empresa, nombre_empresa, fecha_hasta, st):
     else:
         st.error("No se generaron datos para consolidar.")
         return None
+=======
+def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa):
+    fecha_fin_mes = (fecha_inicio + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
+    session = requests.Session()
+    retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+    session.mount("https://", HTTPAdapter(max_retries=retries))
+    
+    cuentas_coma_separadas, cuenta_nombre_dict = obtener_cuentas(session, token, rut_empresa)
+    if not cuentas_coma_separadas:
+        print("No se encontraron cuentas de nivel 4 en el plan de cuentas.")
+        return []
+    
+    datos_cuenta = llamar_api_libro_mayor(session, token, rut_empresa, cuentas_coma_separadas, 
+                                          fecha_inicio.strftime('%Y-%m-%d'), fecha_fin_mes.strftime('%Y-%m-%d'))
+    
+    libro_mayor_datos = []
+    for asiento in datos_cuenta:
+        cuenta_codigo_completo = asiento.get('cuenta', '')  # Obtener el texto completo de la cuenta
+        # Dividir en "Código de Cuenta" y "Cuenta"
+        codigo_cuenta = cuenta_codigo_completo[:10]  # Extraer los primeros 10 caracteres
+        nombre_cuenta = cuenta_codigo_completo[10:].strip()  # El resto del texto, quitando espacios
+
+        detalles = asiento.get('detalles', '').lower()
+        
+        if "apertura" not in detalles:
+            diferencia = asiento['credito'] - asiento['debito']
+            tipo = "D" if diferencia < 0 else "C"
+            libro_mayor_datos.append({
+                "Código de Cuenta": codigo_cuenta,  # Primeros 10 caracteres
+                "Cuenta": nombre_cuenta,            # El resto del texto
+                "Crédito - Débito": diferencia,
+                "Tipo": tipo,
+                "Detalles": asiento.get('detalles', ''),
+                "Fecha de Contabilización": asiento.get('fecha_contabilizacion_humana', ''),
+                "Centro de Costo": "N/A",
+                "Empresa": nombre_empresa,
+                "Información Adicional": f"Asiento {asiento.get('numero_asiento', '')}",
+                "Contraparte": asiento.get('contraparte', '')
+            })
+    
+    return libro_mayor_datos
+>>>>>>> parent of 9102485 (cambio en los tiempos de ejecucion)
 
 # Consolidación de archivos JSON en una lista única
 def consolidar_archivos_json_como_lista(archivos_mensuales, ruta_archivo_anual):
