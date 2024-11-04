@@ -67,8 +67,8 @@ def obtener_libro_mayor_por_mes(token, rut_empresa, fecha_inicio, nombre_empresa
     
     # Configuración de reintentos con mayor número de intentos y tiempo de espera entre reintentos
     retries = Retry(
-        total=10,               # Número total de reintentos
-        backoff_factor=5,       # Incremento del tiempo de espera entre reintentos
+        total=20,               # Número total de reintentos
+        backoff_factor=10,       # Incremento del tiempo de espera entre reintentos
         status_forcelist=[429, 500, 502, 503, 504]  # Errores para los cuales se debe reintentar
     )
     session.mount("https://", HTTPAdapter(max_retries=retries))
